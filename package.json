@@ -1,0 +1,19 @@
+{
+  "name": "movie-manager",
+  "version": "1.0.0",
+  "description": "跨平台电影管理客户端",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["electron", "movie", "manager", "video"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^28.0.0"
+  },
+  "dependencies": {
+    "ffprobe-static": "^3.0.0"
+  }
+}

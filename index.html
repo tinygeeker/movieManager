@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>电影管理器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        
+        h1 {
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .directory-info {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .content {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .main-content {
+            flex: 1;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .folder-list, .movie-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .folder-item, .movie-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .folder-item:hover, .movie-item:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .movie-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .movie-card {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .movie-thumbnail {
+            width: 100%;
+            height: 250px;
+            background-color: #e0e0e0;
+            border-radius: 3px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: #ccc;
+        }
+        
+        .movie-info {
+            font-size: 14px;
+        }
+        
+        .movie-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .movie-duration {
+            color: #666;
+        }
+        
+        .movie-details {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .detail-item {
+            margin: 10px 0;
+        }
+        
+        .detail-label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>电影管理器</h1>
+        
+        <div class="directory-info">
+            <h2>当前目录: <span id="current-directory"></span></h2>
+        </div>
+        
+        <div class="content">
+            <div class="sidebar">
+                <h3>文件夹</h3>
+                <ul class="folder-list" id="folder-list">
+                    <li class="folder-item" data-path=".">
+                        <strong>当前目录</strong>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="main-content">
+                <h3>电影列表</h3>
+                <div class="movie-grid" id="movie-grid">
+                    <!-- 电影卡片将通过JavaScript动态生成 -->
+                </div>
+                
+                <div class="movie-details" id="movie-details">
+                    <h3>电影详情</h3>
+                    <div id="detail-content">
+                        选择一部电影查看详情
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const { electronAPI } = window;
+        const path = require('path');
+        const fs = require('fs');
+        
+        let currentDirectory = '.';
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            await updateCurrentDirectory();
+            await scanDirectory(currentDirectory);
+        });
+        
+        async function updateCurrentDirectory() {
+            const appDir = process.cwd();
+            document.getElementById('current-directory').textContent = appDir;
+            currentDirectory = appDir;
+        }
+        
+        async function scanDirectory(directoryPath) {
+            const result = await electronAPI.scanDirectory(directoryPath);
+            
+            if (result.error) {
+                console.error('Error scanning directory:', result.error);
+                return;
+            }
+            
+            updateFolderList(result.folders);
+            updateMovieGrid(result.movies);
+        }
+        
+        function updateFolderList(folders) {
+            const folderList = document.getElementById('folder-list');
+            folderList.innerHTML = `
+                <li class="folder-item" data-path=".">
+                    <strong>当前目录</strong>
+                </li>
+            `;
+            
+            folders.forEach(folder => {
+                const li = document.createElement('li');
+                li.className = 'folder-item';
+                li.dataset.path = folder.path;
+                li.textContent = folder.name;
+                li.addEventListener('click', () => {
+                    currentDirectory = folder.path;
+                    scanDirectory(folder.path);
+                });
+                folderList.appendChild(li);
+            });
+        }
+        
+        function updateMovieGrid(movies) {
+            const movieGrid = document.getElementById('movie-grid');
+            movieGrid.innerHTML = '';
+            
+            movies.forEach(movie => {
+                const movieCard = document.createElement('div');
+                movieCard.className = 'movie-card';
+                
+                movieCard.innerHTML = `
+                    <div class="movie-thumbnail">🎬</div>
+                    <div class="movie-info">
+                        <div class="movie-title">${movie.name}</div>
+                        <div class="movie-duration">加载中...</div>
+                    </div>
+                `;
+                
+                movieCard.addEventListener('click', () => {
+                    showMovieDetails(movie);
+                });
+                
+                movieGrid.appendChild(movieCard);
+                
+                // 获取电影信息
+                getMovieInfo(movie.path, movieCard);
+            });
+        }
+        
+        async function getMovieInfo(moviePath, movieCard) {
+            try {
+                const info = await electronAPI.getMovieInfo(moviePath);
+                const durationElement = movieCard.querySelector('.movie-duration');
+                
+                if (info.format && info.format.duration) {
+                    const duration = parseFloat(info.format.duration);
+                    const hours = Math.floor(duration / 3600);
+                    const minutes = Math.floor((duration % 3600) / 60);
+                    durationElement.textContent = `${hours}h ${minutes}m`;
+                }
+            } catch (error) {
+                console.error('Error getting movie info:', error);
+            }
+        }
+        
+        async function showMovieDetails(movie) {
+            const detailContent = document.getElementById('detail-content');
+            detailContent.innerHTML = '<div class="loading"></div> 加载中...';
+            
+            try {
+                const info = await electronAPI.getMovieInfo(movie.path);
+                let detailsHTML = `
+                    <h4>${movie.name}</h4>
+                `;
+                
+                if (info.format) {
+                    detailsHTML += `
+                        <div class="detail-item">
+                            <span class="detail-label">格式:</span>
+                            <span>${info.format.format_name}</span>
+                        </div>
+                    `;
+                    
+                    if (info.format.duration) {
+                        const duration = parseFloat(info.format.duration);
+                        const hours = Math.floor(duration / 3600);
+                        const minutes = Math.floor((duration % 3600) / 60);
+                        const seconds = Math.floor(duration % 60);
+                        detailsHTML += `
+                            <div class="detail-item">
+                                <span class="detail-label">时长:</span>
+                                <span>${hours}h ${minutes}m ${seconds}s</span>
+                            </div>
+                        `;
+                    }
+                    
+                    if (info.format.size) {
+                        const size = parseInt(info.format.size);
+                        const sizeInMB = (size / (1024 * 1024)).toFixed(2);
+                        detailsHTML += `
+                            <div class="detail-item">
+                                <span class="detail-label">文件大小:</span>
+                                <span>${sizeInMB} MB</span>
+                            </div>
+                        `;
+                    }
+                }
+                
+                if (info.streams) {
+                    const videoStream = info.streams.find(stream => stream.codec_type === 'video');
+                    if (videoStream) {
+                        detailsHTML += `
+                            <div class="detail-item">
+                                <span class="detail-label">视频编码:</span>
+                                <span>${videoStream.codec_name}</span>
+                            </div>
+                        `;
+                        
+                        if (videoStream.width && videoStream.height) {
+                            detailsHTML += `
+                                <div class="detail-item">
+                                    <span class="detail-label">分辨率:</span>
+                                    <span>${videoStream.width}x${videoStream.height}</span>
+                                </div>
+                            `;
+                        }
+                    }
+                    
+                    const audioStream = info.streams.find(stream => stream.codec_type === 'audio');
+                    if (audioStream) {
+                        detailsHTML += `
+                            <div class="detail-item">
+                                <span class="detail-label">音频编码:</span>
+                                <span>${audioStream.codec_name}</span>
+                            </div>
+                        `;
+                    }
+                }
+                
+                detailContent.innerHTML = detailsHTML;
+            } catch (error) {
+                detailContent.innerHTML = `
+                    <p>获取电影详情时出错: ${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
