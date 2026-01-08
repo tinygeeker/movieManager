@@ -9,9 +9,15 @@ let ffmpegPath = 'ffprobe';
 let mainWindow;
 
 function createWindow() {
+    const { screen } = require('electron');
+    const mainScreen = screen.getPrimaryDisplay();
+    const dimensions = mainScreen.size;
+    
     mainWindow = new BrowserWindow({
         width: 1400,
         height: 900,
+        x: Math.round((dimensions.width - 1400) / 2),
+        y: Math.round((dimensions.height - 900) / 2),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: true,
@@ -132,6 +138,12 @@ function createWindow() {
                     label: '打赏',
                     click: () => {
                         mainWindow.webContents.executeJavaScript(`
+                            // 先检查是否已经存在打赏模态框，如果存在则移除
+                            const existingModal = document.getElementById('donate-modal');
+                            if (existingModal) {
+                                existingModal.remove();
+                            }
+                            
                             // 创建打赏模态框
                             const donateModal = document.createElement('div');
                             donateModal.className = 'donate-modal show';
@@ -152,7 +164,13 @@ function createWindow() {
                             closeButton.addEventListener('click', () => {
                                 donateModal.classList.remove('show');
                                 setTimeout(() => {
-                                    document.body.removeChild(donateModal);
+                                    try {
+                                        if (document.body.contains(donateModal)) {
+                                            document.body.removeChild(donateModal);
+                                        }
+                                    } catch (e) {
+                                        console.error('Error removing donate modal:', e);
+                                    }
                                 }, 300);
                             });
                         `);
@@ -163,7 +181,16 @@ function createWindow() {
                 },
                 {
                     label: '关于',
-                    role: 'about'
+                    click: () => {
+                        const { dialog } = require('electron');
+                        dialog.showMessageBox({
+                            title: '关于电影管理器',
+                            message: '电影管理器',
+                            detail: '开发者：江户川柯北\n版本号：v3.2',
+                            buttons: ['确定'],
+                            icon: null
+                        });
+                    }
                 }
             ]
         }
