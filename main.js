@@ -21,7 +21,8 @@ function createWindow() {
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: true,
-            contextIsolation: false
+            contextIsolation: false,
+            webSecurity: false
         }
     });
 
@@ -132,48 +133,6 @@ function createWindow() {
                     click: () => {
                         const { shell } = require('electron');
                         shell.openExternal('https://github.com/tinygeeker');
-                    }
-                },
-                {
-                    label: '打赏',
-                    click: () => {
-                        mainWindow.webContents.executeJavaScript(`
-                            // 先检查是否已经存在打赏模态框，如果存在则移除
-                            const existingModal = document.getElementById('donate-modal');
-                            if (existingModal) {
-                                existingModal.remove();
-                            }
-                            
-                            // 创建打赏模态框
-                            const donateModal = document.createElement('div');
-                            donateModal.className = 'donate-modal show';
-                            donateModal.id = 'donate-modal';
-                            
-                            donateModal.innerHTML = \`
-                                <div class="donate-content">
-                                    <h3>支持开发者</h3>
-                                    <img src="https://tinygeeker.github.io/assets/user/donate.jpg" alt="打赏二维码" style="max-width: 95%; max-height: 700px;">
-                                    <button class="donate-close">关闭</button>
-                                </div>
-                            \`;
-                            
-                            document.body.appendChild(donateModal);
-                            
-                            // 添加关闭按钮事件监听器
-                            const closeButton = donateModal.querySelector('.donate-close');
-                            closeButton.addEventListener('click', () => {
-                                donateModal.classList.remove('show');
-                                setTimeout(() => {
-                                    try {
-                                        if (document.body.contains(donateModal)) {
-                                            document.body.removeChild(donateModal);
-                                        }
-                                    } catch (e) {
-                                        console.error('Error removing donate modal:', e);
-                                    }
-                                }, 300);
-                            });
-                        `);
                     }
                 },
                 {
